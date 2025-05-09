@@ -98,6 +98,7 @@ public class KzgPlayer {
      */
     public void setKzgGLSurfaceView(KzgGLSurfaceView kzgGLSurfaceView) {
         this.kzgGLSurfaceView = kzgGLSurfaceView;
+
         kzgGLSurfaceView.getKzgGlRender().setOnSurfaceCreateListener(new KzgGlRender.OnSurfaceCreateListener() {
             @Override
             public void onSurfaceCreate(Surface sf) {

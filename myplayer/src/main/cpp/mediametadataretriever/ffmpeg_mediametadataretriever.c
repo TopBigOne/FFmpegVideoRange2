@@ -610,7 +610,7 @@ int get_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *pkt) {
 }
 
 int get_scaled_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *pkt, int width, int height) {
-    printf("get_frame_at_time\n");
+    printf("get_scaled_frame_at_time\n");
     int got_packet = 0;
     int64_t desired_frame_number = -1;
 

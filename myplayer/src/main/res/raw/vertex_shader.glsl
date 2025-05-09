@@ -1,7 +1,24 @@
-attribute vec4 av_Position;
-attribute vec2 af_Position;
-varying vec2 v_texPosition;
+// 声明顶点位置属性（4维向量，通常由外部程序传入）
+// attribute 表示每个顶点特有的属性数据
+// vec4 包含 x,y,z,w 分量，通常 w=1.0
+attribute vec4 av_Position;// 顶点在裁剪空间的位置（通常已经过 MVP 矩阵变换）
+
+// 声明纹理坐标属性（2维向量，通常由外部程序传入）
+// 表示该顶点对应的纹理坐标（范围一般 [0,0] 到 [1,1]）
+attribute vec2 af_Position; // 顶点对应的纹理坐标（UV 坐标）
+
+// 声明 varying 变量（用于传递给片元着色器）
+// 顶点着色器输出的纹理坐标，会在光栅化阶段进行插值
+varying vec2 v_texPosition; // 插值后的纹理坐标，传递给片元着色器使用,在光栅化过程中，这个值会在三角形内部自动线性插值
+
+
+// 顶点着色器主函数（每个顶点执行一次）
 void main() {
+// 将纹理坐标传递给片元着色器
+    // 这个值会在图元内的各个片元间自动插值
     v_texPosition = af_Position;
+    // 设置顶点的最终裁剪空间位置
+    // gl_Position 是内置变量，必须赋值
+     // 这里直接使用输入的顶点坐标（通常已由投影矩阵处理过）
     gl_Position = av_Position;
 }

@@ -29,67 +29,54 @@ import static android.opengl.GLES30.GL_UNPACK_SKIP_ROWS;
  * Created By Ele
  * on 2020/5/30
  **/
-public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFrameAvailableListener{
-    public static final int RENDER_YUV = 1;
+public class KzgGlRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener {
+    public static final int RENDER_YUV        = 1;
     public static final int RENDER_MEDIACODEC = 2;
 
     private Context context;
 
-    private final float[] vertexData = {
-            -1f,-1f,
-            1f,-1f,
-            -1f,1f,
-            1f,1f
-    };
+    private final float[] vertexData = {-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f};
 
-    private float[] textureData = {
-            0f,1f,
-            1f,1f,
-            0f,0f,
-            1f,0f
-    };
+    private float[] textureData = {0f, 1f, 1f, 1f, 0f, 0f, 1f, 0f};
 
     private FloatBuffer vertexBuffer;
     private FloatBuffer textureBuffer;
-    private int renderType = RENDER_YUV;
+    private int         renderType = RENDER_YUV;
 
     //使用ffmpeg解码来播放yuv
     private int program_yuv;
     private int avPosition_yuv;
     private int afPosition_yuv;
 
-    private int sampler_y;
-    private int sampler_u;
-    private int sampler_v;
-    private int[] textureIds_yuv = new int[3];
-    private int width_yuv;
-    private int height_yuv;
-    private int practicalWidth_yuv;
+    private int        sampler_y;
+    private int        sampler_u;
+    private int        sampler_v;
+    private int[]      textureIds_yuv = new int[3];
+    private int        width_yuv;
+    private int        height_yuv;
+    private int        practicalWidth_yuv;
     private ByteBuffer y;
     private ByteBuffer u;
     private ByteBuffer v;
 
 
     //使用MediaCodec来解码播放
-    private int program_mediaCodec;
-    private int avPosition_mediaCodec;
-    private int afPosition_mediaCodec;
-    private int samplerOES_mediacodec;
-    private int textureId_mediacodec;
-    private SurfaceTexture surfaceTexture;
-    private Surface surface;
+    private int                     program_mediaCodec;
+    private int                     avPosition_mediaCodec;
+    private int                     afPosition_mediaCodec;
+    private int                     samplerOES_mediacodec;
+    private int                     textureId_mediacodec;
+    private SurfaceTexture          surfaceTexture;
+    private Surface                 surface;
     private OnSurfaceCreateListener onSurfaceCreateListener;
-    private OnRenderListener onRenderListener;
+    private OnRenderListener        onRenderListener;
 
     private boolean isInitRender = false;
 
 
     public KzgGlRender(Context context) {
         this.context = context;
-        vertexBuffer = ByteBuffer.allocateDirect(vertexData.length * 4)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer()
-                .put(vertexData);
+        vertexBuffer = ByteBuffer.allocateDirect(vertexData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vertexData);
         vertexBuffer.position(0);
     }
 
@@ -105,77 +92,77 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
-        GLES20.glViewport(0,0,width,height);
+        GLES20.glViewport(0, 0, width, height);
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-        GLES20.glClearColor(0.0f,0f,0f,1);
-        if (renderType == RENDER_YUV){
+        GLES20.glClearColor(0.0f, 0f, 0f, 1);
+        if (renderType == RENDER_YUV) {
             renderYUV();
-        }else if (renderType == RENDER_MEDIACODEC){
+        } else if (renderType == RENDER_MEDIACODEC) {
             renderMediaCodec();
         }
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
         //每当解码出数据就回调给GlSurfaceView 刷新
-        if (onRenderListener != null){
+        if (onRenderListener != null) {
             onRenderListener.onRender();
         }
     }
 
 
-    private void initRenderYUV(){
-        if (isInitRender){
+    /**
+     * // 初始化 OpenGL 程序、着色器、纹理等
+     */
+    private void initRenderYUV() {
+        if (isInitRender) {
             return;
         }
         isInitRender = true;
 
-        if (practicalWidth_yuv > 0 && practicalWidth_yuv < width_yuv){
-            textureData[2] = practicalWidth_yuv *1.0f / width_yuv;
-            textureData[6] = practicalWidth_yuv *1.0f / width_yuv;
+        if (practicalWidth_yuv > 0 && practicalWidth_yuv < width_yuv) {
+            textureData[2] = practicalWidth_yuv * 1.0f / width_yuv;
+            textureData[6] = practicalWidth_yuv * 1.0f / width_yuv;
         }
 
-        textureBuffer = ByteBuffer.allocateDirect(textureData.length * 4)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer()
-                .put(textureData);
+        textureBuffer = ByteBuffer.allocateDirect(textureData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(textureData);
         textureBuffer.position(0);
 
-        String vertexSource = KzgShaderUtil.readRawTxt(context, R.raw.vertex_shader);
-        String fragmenSource = KzgShaderUtil.readRawTxt(context,R.raw.fragment_shader);
+        String vertexSource  = KzgShaderUtil.readRawTxt(context, R.raw.vertex_shader);
+        String fragmenSource = KzgShaderUtil.readRawTxt(context, R.raw.fragment_shader);
 
-        program_yuv = KzgShaderUtil.createProgram(vertexSource,fragmenSource);
+        program_yuv = KzgShaderUtil.createProgram(vertexSource, fragmenSource);
 
-        if (program_yuv > 0){
-            avPosition_yuv = GLES20.glGetAttribLocation(program_yuv,"av_Position");
-            afPosition_yuv = GLES20.glGetAttribLocation(program_yuv,"af_Position");
+        if (program_yuv > 0) {
+            avPosition_yuv = GLES20.glGetAttribLocation(program_yuv, "av_Position");
+            afPosition_yuv = GLES20.glGetAttribLocation(program_yuv, "af_Position");
 
-            sampler_y = GLES20.glGetUniformLocation(program_yuv,"sampler_y");
-            sampler_u = GLES20.glGetUniformLocation(program_yuv,"sampler_u");
-            sampler_v = GLES20.glGetUniformLocation(program_yuv,"sampler_v");
+            sampler_y = GLES20.glGetUniformLocation(program_yuv, "sampler_y");
+            sampler_u = GLES20.glGetUniformLocation(program_yuv, "sampler_u");
+            sampler_v = GLES20.glGetUniformLocation(program_yuv, "sampler_v");
 
             //创建纹理，并获取纹理id
-            GLES20.glGenTextures(3,textureIds_yuv,0);
-            for (int i=0;i<textureIds_yuv.length;i++){
+            GLES20.glGenTextures(3, textureIds_yuv, 0);
+            for (int i = 0; i < textureIds_yuv.length; i++) {
                 //绑定纹理
-                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,textureIds_yuv[i]);
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds_yuv[i]);
                 //设置环绕，即，超出纹理坐标范围的，进行重复绘制
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_WRAP_S,GLES20.GL_REPEAT);//表示x轴
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_WRAP_T,GLES20.GL_REPEAT);//表示y轴
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);//表示x轴
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);//表示y轴
                 //设置过滤 即，纹理像素映射到坐标点后是进行放大还是缩小等一些处理，这里 是进行一个线性操作
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_MIN_FILTER,GLES20.GL_LINEAR);
-                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_MAG_FILTER,GLES20.GL_LINEAR);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
             }
 
         }
     }
 
-    public void setYUVRenderData(int width,int height,byte[] y,byte[] u,byte[] v,int practicalWidth){
+    public void setYUVRenderData(int width, int height, byte[] y, byte[] u, byte[] v, int practicalWidth) {
         this.width_yuv = width;
         this.height_yuv = height;
         this.practicalWidth_yuv = practicalWidth;
@@ -184,34 +171,46 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
         this.v = ByteBuffer.wrap(v);
     }
 
-    private void renderYUV(){
+    /**
+     * 基于 OpenGL ES 2.0 的 YUV 图像渲染方法，主要用于将 YUV 格式的视频帧 渲染到屏幕上。
+     */
+    private void renderYUV() {
 
-        if (width_yuv > 0 && height_yuv > 0 && y != null && u != null && v != null){
+        if (width_yuv > 0 && height_yuv > 0 && y != null && u != null && v != null) {
             initRenderYUV();
+
             GLES20.glUseProgram(program_yuv);
+            // 使用指定的着色器程序
             GLES20.glEnableVertexAttribArray(avPosition_yuv);
-            GLES20.glVertexAttribPointer(avPosition_yuv,2,GLES20.GL_FLOAT,false,8,vertexBuffer);
+            GLES20.glVertexAttribPointer(avPosition_yuv, 2, GLES20.GL_FLOAT, false, 8, vertexBuffer);
 
             GLES20.glEnableVertexAttribArray(afPosition_yuv);
-            GLES20.glVertexAttribPointer(afPosition_yuv,2,GLES20.GL_FLOAT,false,8,textureBuffer);
+            GLES20.glVertexAttribPointer(afPosition_yuv, 2, GLES20.GL_FLOAT, false, 8, textureBuffer);
 
 
+            // 绑定 Y 分量（亮度）
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,textureIds_yuv[0]);
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D,0,GLES20.GL_LUMINANCE,width_yuv,height_yuv,0,GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE,y);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds_yuv[0]);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, width_yuv, height_yuv, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, y);
 
+            // 绑定 U 分量（色度）
             GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,textureIds_yuv[1]);
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D,0,GLES20.GL_LUMINANCE,width_yuv/2,height_yuv/2,0,GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE,u);
-
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds_yuv[1]);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, width_yuv / 2, height_yuv / 2, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, u);
+            // 绑定 V 分量（色度）:GLES20.GL_LUMINANCE :表示单通道灰度数据
             GLES20.glActiveTexture(GLES20.GL_TEXTURE2);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,textureIds_yuv[2]);
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D,0,GLES20.GL_LUMINANCE,width_yuv/2,height_yuv/2,0,GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE,v);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds_yuv[2]);
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, width_yuv / 2, height_yuv / 2, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, v);
 
 
-            GLES20.glUniform1i(sampler_y,0);
-            GLES20.glUniform1i(sampler_u,1);
-            GLES20.glUniform1i(sampler_v,2);
+            //  传递纹理采样器到着色器
+            // 告诉着色器：
+            //  sampler_y 使用 GL_TEXTURE0（Y 分量）。
+            // sampler_u 使用 GL_TEXTURE1（U 分量）。
+            // sampler_v 使用 GL_TEXTURE2（V 分量）。
+            GLES20.glUniform1i(sampler_y, 0);
+            GLES20.glUniform1i(sampler_u, 1);
+            GLES20.glUniform1i(sampler_v, 2);
 
             y.clear();
             u.clear();
@@ -220,29 +219,29 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
     }
 
 
-    private void initRenderMediaCodec(){
+    private void initRenderMediaCodec() {
 
-        String vertexSource = KzgShaderUtil.readRawTxt(context, R.raw.vertex_shader);
-        String fragmenSource = KzgShaderUtil.readRawTxt(context,R.raw.fragment_mediacodec);
+        String vertexSource  = KzgShaderUtil.readRawTxt(context, R.raw.vertex_shader);
+        String fragmenSource = KzgShaderUtil.readRawTxt(context, R.raw.fragment_mediacodec);
 
-        program_mediaCodec = KzgShaderUtil.createProgram(vertexSource,fragmenSource);
+        program_mediaCodec = KzgShaderUtil.createProgram(vertexSource, fragmenSource);
 
-        avPosition_mediaCodec = GLES20.glGetAttribLocation(program_mediaCodec,"av_Position");
-        afPosition_mediaCodec = GLES20.glGetAttribLocation(program_mediaCodec,"af_Position");
+        avPosition_mediaCodec = GLES20.glGetAttribLocation(program_mediaCodec, "av_Position");
+        afPosition_mediaCodec = GLES20.glGetAttribLocation(program_mediaCodec, "af_Position");
 
-        samplerOES_mediacodec = GLES20.glGetUniformLocation(program_mediaCodec,"sTexture");
+        samplerOES_mediacodec = GLES20.glGetUniformLocation(program_mediaCodec, "sTexture");
 
         //创建纹理，并获取纹理id
         int[] textureMediaId = new int[1];
-        GLES20.glGenTextures(1,textureMediaId,0);
+        GLES20.glGenTextures(1, textureMediaId, 0);
         textureId_mediacodec = textureMediaId[0];
 
         //设置环绕，即，超出纹理坐标范围的，进行重复绘制
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,GLES20.GL_TEXTURE_WRAP_S,GLES20.GL_REPEAT);//表示x轴
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,GLES20.GL_TEXTURE_WRAP_T,GLES20.GL_REPEAT);//表示y轴
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);//表示x轴
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);//表示y轴
         //设置过滤 即，纹理像素映射到坐标点后是进行放大还是缩小等一些处理，这里 是进行一个线性操作
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,GLES20.GL_TEXTURE_MIN_FILTER,GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,GLES20.GL_TEXTURE_MAG_FILTER,GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 
         //创建并绑定纹理ID
         surfaceTexture = new SurfaceTexture(textureId_mediacodec);
@@ -250,21 +249,13 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
         surfaceTexture.setOnFrameAvailableListener(this);
 
         //创建好surface需要将其回调给KzgPlayer
-        if (onSurfaceCreateListener != null){
+        if (onSurfaceCreateListener != null) {
             onSurfaceCreateListener.onSurfaceCreate(surface);
         }
     }
 
 
-
-
-
-
-
-
-
-
-    private void renderMediaCodec(){
+    private void renderMediaCodec() {
         surfaceTexture.updateTexImage();
         GLES20.glUseProgram(program_mediaCodec);
 
@@ -285,7 +276,7 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
         this.onSurfaceCreateListener = onSurfaceCreateListener;
     }
 
-    public interface OnSurfaceCreateListener{
+    public interface OnSurfaceCreateListener {
         void onSurfaceCreate(Surface surface);
     }
 
@@ -294,7 +285,7 @@ public class KzgGlRender implements GLSurfaceView.Renderer,SurfaceTexture.OnFram
         this.onRenderListener = onRenderListener;
     }
 
-    public interface OnRenderListener{
+    public interface OnRenderListener {
         void onRender();
     }
 
